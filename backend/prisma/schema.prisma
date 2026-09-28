@@ -1,0 +1,478 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  BARBER
+  CLIENT
+
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum CancellationReason {
+  CLIENT_REQUEST
+  BARBERSHOP_REQUEST
+  BARBER_UNAVAILABLE
+  OTHER
+}
+
+enum BlockType {
+  BREAK
+  LUNCH
+  PERSONAL
+  MAINTENANCE
+  OTHER
+}
+
+enum DayOfWeek {
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+}
+
+enum NotificationType {
+  APPOINTMENT_CREATED
+  APPOINTMENT_CONFIRMED
+  APPOINTMENT_CANCELLED
+  APPOINTMENT_RESCHEDULED
+  APPOINTMENT_REMINDER
+  APPOINTMENT_COMPLETED
+  SYSTEM
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  WHATSAPP
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  CANCEL
+  COMPLETE
+  BLOCK
+  UNBLOCK
+  RESCHEDULE
+  STATUS_CHANGE
+}
+
+enum AuditEntity {
+  USER
+  BARBERSHOP
+  BARBER
+  CLIENT
+  SERVICE
+  APPOINTMENT
+  REVIEW
+  BUSINESS_HOUR
+  BARBER_BLOCK
+}
+
+enum TokenType {
+  REFRESH
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
+}
+
+
+// ============================================================
+// BARBERSHOP
+// ============================================================
+
+model Barbershop {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  document    String?  @unique
+  phone       String?
+  email       String?
+
+  description String?
+
+  street      String?
+  number      String?
+  complement  String?
+  neighborhood String?
+  city        String?
+  state       String?
+  zipCode     String?
+
+  logoUrl     String?
+
+  timezone    String?   
+
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users           User[]
+  barbers         Barber[]
+  clients         Client[]
+  services        Service[]
+  businessHours   BusinessHour[]
+  appointments    Appointment[]
+  notifications   Notification[]
+  auditLogs       AuditLog[]
+
+  @@index([slug])
+  @@index([isActive])
+  @@map("barbearia")
+}
+
+
+// ============================================================
+// USERS
+// ============================================================
+
+model User {
+  id           String     @id @default(uuid())
+  barbershopId String?
+  name         String
+  email        String
+  passwordHash String
+  phone        String?
+  role         UserRole   @default(CLIENT)
+  status       UserStatus @default(ACTIVE)
+  emailVerified Boolean   @default(false)
+  lastLoginAt  DateTime?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  barbershop   Barbershop? @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+
+  barber       Barber?
+  client       Client?
+
+  refreshTokens RefreshToken[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+
+  @@unique([barbershopId, email])
+  @@index([barbershopId])
+  @@index([email])
+  @@index([status])
+}
+
+
+// ============================================================
+// BARBER
+// ============================================================
+
+model Barber {
+
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  barbershopId String
+  bio          String?
+  photoUrl     String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  services     BarberService[]
+  blocks       BarberBlock[]
+  appointments Appointment[]
+
+  @@index([barbershopId])
+  @@index([isActive])
+}
+
+
+// ============================================================
+// CLIENT
+// ============================================================
+
+model Client {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  barbershopId String
+  birthDate    DateTime?
+  notes        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@index([barbershopId])
+  @@index([isActive])
+}
+
+
+// ============================================================
+// SERVICES
+// ============================================================
+
+model Service {
+
+  id           String   @id @default(uuid())
+  barbershopId String
+  name         String
+  description  String?
+  price        Decimal  @db.Decimal(10, 2)
+  durationMin  Int
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+
+  barbers      BarberService[]
+  appointments Appointment[]
+
+  @@index([barbershopId])
+  @@index([isActive])
+}
+
+
+// ============================================================
+// BARBER x SERVICE
+// ============================================================
+
+model BarberService {
+  barberId  String
+  serviceId String
+
+  createdAt DateTime @default(now())
+
+  barber    Barber  @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([barberId, serviceId])
+  @@index([serviceId])
+}
+
+
+// ============================================================
+// BUSINESS HOURS
+// ============================================================
+
+model BusinessHour {
+  id           String    @id @default(uuid())
+
+  barbershopId String
+
+  dayOfWeek    DayOfWeek
+
+  isOpen       Boolean   @default(true)
+
+  openTime     String?
+  closeTime    String?
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+
+  @@unique([barbershopId, dayOfWeek])
+  @@index([barbershopId])
+}
+
+
+// ============================================================
+// BARBER BLOCKS / INTERVALOS
+// ============================================================
+
+model BarberBlock {
+  id        String    @id @default(uuid())
+
+  barberId  String
+
+  type      BlockType @default(OTHER)
+
+  title     String?
+  reason    String?
+
+  startAt   DateTime
+  endAt     DateTime
+
+  isActive  Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  barber    Barber    @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@index([barberId])
+  @@index([startAt, endAt])
+}
+
+
+// ============================================================
+// APPOINTMENTS
+// ============================================================
+
+model Appointment {
+  id           String   @id @default(uuid())
+
+  barbershopId String
+  clientId     String
+  barberId     String
+  serviceId    String
+
+  startAt      DateTime
+  endAt        DateTime
+
+  status       AppointmentStatus @default(SCHEDULED)
+
+  // Snapshot dos dados no momento do agendamento
+  serviceName  String
+  servicePrice Decimal  @db.Decimal(10, 2)
+  durationMin  Int
+
+  clientNotes  String?
+
+  cancelledAt  DateTime?
+  cancelReason CancellationReason?
+
+  completedAt  DateTime?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  client       Client     @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  barber       Barber     @relation(fields: [barberId], references: [id], onDelete: Restrict)
+  service      Service    @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  @@index([barbershopId])
+  @@index([clientId])
+  @@index([barberId])
+  @@index([serviceId])
+  @@index([startAt])
+  @@index([endAt])
+  @@index([status])
+  @@index([barberId, startAt, endAt])
+  @@index([clientId, startAt, endAt])
+}
+
+
+// ============================================================
+// REFRESH TOKENS
+// ============================================================
+
+model RefreshToken {
+  id          String    @id @default(uuid())
+
+  userId      String
+
+  tokenHash   String    @unique
+
+  expiresAt   DateTime
+
+  revokedAt   DateTime?
+
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+}
+
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
+model Notification {
+  id           String              @id @default(uuid())
+
+  userId       String
+  barbershopId String?
+
+  type         NotificationType
+  channel      NotificationChannel
+
+  title        String
+  message      String
+
+  readAt       DateTime?
+
+  sentAt       DateTime?
+
+  createdAt    DateTime            @default(now())
+
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  barbershop   Barbershop?        @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([barbershopId])
+  @@index([readAt])
+  @@index([createdAt])
+}
+
+
+// ============================================================
+// AUDIT LOG
+// ============================================================
+
+model AuditLog {
+  id           String       @id @default(uuid())
+
+  userId       String?
+  barbershopId String?
+
+  action       AuditAction
+  entity       AuditEntity
+  entityId     String?
+
+  description  String?
+
+  metadata     Json?
+
+  ipAddress    String?
+  userAgent    String?
+
+  createdAt    DateTime     @default(now())
+
+  user         User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  barbershop   Barbershop? @relation(fields: [barbershopId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([barbershopId])
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([createdAt])
+}

@@ -1,0 +1,55 @@
+ferramentas utilizadas
+bcrypt
+jwt
+fastify
+prisma
+docker
+typescript
+
+
+Regras de Negocio Funcionais
+
+[] deve ter Usuarios
+[] deve ter perfies de Acesso
+[] deve ter uma barbearia 
+[] cliente deve agendar um horario
+[] todo serviço deve ter uma duração min e valores
+[] todo barbeiro deve pertencer a uma ou mais barbearia
+[] agendamento deve ter status
+[] o barbeiro deve poder cancelar um agentamento 
+[] usuario com historico de cancelamentos de agendamento deve pagar um sinal 
+[] cliente pode cancelar seu agendamento desde que antecedente a 2h
+[] clente pode reagendar o seu horario desde hajá vaga disponivel
+[] barbeiro pode finalizar status do atendimento para contabilizar 
+
+Regras de Negocio Não Funcionais
+
+[] cliente não pode fazer mais de um agendamento no dia
+[] cliente não pode fazer agendamento em horario já ocupado
+[] o agendamento so pode ser liberado em tão horario se o barbeiro estiver livre
+
+
+Regras geradas pela IA
+
+1. Usuário pertence a uma barbearia
+2. Usuário possui uma função
+3. Serviço possui preço e duração
+4. Barbeiro possui serviços que pode executar
+5. Barbearia possui horário de funcionamento
+6. Barbeiro possui disponibilidade
+7. Cliente escolhe serviço + barbeiro + horário
+8. Sistema verifica disponibilidade
+9. Não pode existir conflito de horário
+10. Cliente não pode ter horários conflitantes
+11. Não pode agendar no passado
+12. Não pode agendar fora do funcionamento
+13. Não pode agendar serviço inativo
+14. Não pode agendar barbeiro inativo
+15. Cancelamento altera status, não apaga registro
+16. Reagendamento executa novamente todas as validações
+17. Atendimento concluído entra no histórico
+18. Apenas atendimento concluído pode gerar avaliação
+19. Apenas atendimento concluído entra no faturamento
+20. Usuários só acessam dados da própria barbearia
+21. Permissões dependem do perfil
+22. Ações importantes podem ser auditadas

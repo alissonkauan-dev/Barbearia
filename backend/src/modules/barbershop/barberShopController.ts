@@ -1,17 +1,18 @@
 import * as ServiceShop from "./barberShopService"
 import type { FastifyReply, FastifyRequest } from "fastify"
-
+import { barberShopCreateSchema, barberShopUpdateSchema } from "./barbershopSchemas"
 
 
 export async function createShop(req: FastifyRequest, res: FastifyReply){
-
-    const shopCreated = await ServiceShop.barberShopCreate(req.body as any)
+    const shop = barberShopCreateSchema.parse(req.body)
+    const shopCreated = await ServiceShop.barberShopCreate(shop)
     return res.status(201).send({status:" Barbearia Criada com Sucesso", data: shopCreated})
 }
 
 export async function updateShop(req: FastifyRequest, res: FastifyReply){
     const {id} = req.params as {id: string}
-    const shopUpdate = await ServiceShop.barberShopUpdate(id, req.body)
+    const shop = barberShopUpdateSchema.parse(req.body)
+    const shopUpdate = await ServiceShop.barberShopUpdate(id, shop)
     return res.status(200).send({status: "Informações da barbearia atualizada", data: shopUpdate})
 }
 
@@ -19,7 +20,7 @@ export async function shopDelete(req: FastifyRequest, res: FastifyReply){
 
     const {id} = req.params as {id: string}
     const shopInativo = await ServiceShop.barberShopDelete(id)
-    return res.status(200).send({status: "Barbearia desativada com suscesso", data: shopInativo})
+    return res.status(200).send({status: "Barbearia desativada com sucesso", data: shopInativo})
 
 }
 

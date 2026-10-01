@@ -3,10 +3,7 @@ import * as schema from "./usuarioSchema"
 import prisma from "../../database/prisma";
 import bcrypt from "bcryptjs";
 import * as token from "../../utils/token"
-import { verify } from "crypto";
-import { refreshTokenAuth } from "../../middlewares/refreshToken";
 import jwt from "jsonwebtoken";
-import { env } from "../../env";
 
 interface USER {
     email: string;
@@ -50,9 +47,9 @@ export async function createUser(body: schema.CreateUserDto) {
 
 export async function loginUser(login: USER) {
 
-    const usuarioExistent = await prisma.user.findUnique({ where: { email: login.email } })
+    const usuarioExistent = await prisma.user.findFirst({ where: { email: login.email } })
 
-    if (!usuarioExistent) {
+    if (!usuarioExistent || (usuarioExistent.status == "INACTIVE" || usuarioExistent.status == "BLOCKED")) {
         throw new Error("Usuario ou Senha Invalidos")
     }
 

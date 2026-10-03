@@ -7,8 +7,8 @@ import { authMiddleware } from "../../middlewares/auth";
 export async function barberRoutes(app: FastifyInstance) {
 
 app.post("/barber/create", {preHandler: [authMiddleware, authorizeMiddleware([UserRoles.SUPER_ADMIN, UserRoles.ADMIN])]}, Controller.createBarber)
-app.put("/barber/update", {preHandler: [authMiddleware, authorizeMiddleware([UserRoles.SUPER_ADMIN, UserRoles.ADMIN])]}, Controller.updateBarber)
+app.patch("/barber/update/:barberId", {preHandler: [authMiddleware, authorizeMiddleware([UserRoles.SUPER_ADMIN, UserRoles.ADMIN])]}, Controller.updateBarber)
 app.get("/barber/list", {preHandler: [authMiddleware, authorizeMiddleware([UserRoles.SUPER_ADMIN, UserRoles.ADMIN])]}, Controller.listBarber)
-app.delete("/barber/delete", {preHandler: [authMiddleware, authorizeMiddleware([UserRoles.SUPER_ADMIN, UserRoles.ADMIN])]}, Controller.deleteBarber)
+app.patch("/barber/delete/:barberId", {preHandler: [authMiddleware, authorizeMiddleware([UserRoles.SUPER_ADMIN, UserRoles.ADMIN])]}, Controller.deleteBarber)
 
 }

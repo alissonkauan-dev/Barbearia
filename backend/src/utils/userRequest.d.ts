@@ -6,9 +6,9 @@ declare module "fastify" {
     user: {
       id: string;
       email: string;
-      role: UserRole;
+      role: UserRoles;
       barbershopId?: string;
-      userId?: string;
+      barberId?: string;
     };
   }
 }

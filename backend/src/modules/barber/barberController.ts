@@ -11,8 +11,14 @@ export async function createBarber(req: FastifyRequest, res: FastifyReply){
 }
 
 export async function updateBarber(req: FastifyRequest, res: FastifyReply) {
-    const {id} = req.query as {id: string}
-    const updatedBarber =  await BarberService.barberUpdate(id,req.body)
+    const {barberId} = req.query as {barberId: string}
+    const targetBarberId = barberId || req.user.barberId;
+
+    if(targetBarberId !== req.user.barberId && (req.user.role !== "SUPER_ADMIN" && req.user.role !== "ADMIN")){
+        return res.status(403).send("Usuario não tem permissão para atualizar outro barbeiro")
+    }
+
+    const updatedBarber =  await BarberService.barberUpdate(targetBarberId,req.body)
     res.status(200).send({status: "Cadastro atualizado", data: updatedBarber})
 
 }
@@ -37,11 +43,11 @@ export async function listBarber(req: FastifyRequest, res: FastifyReply){
 
 
 export async function deleteBarber(req: FastifyRequest, res: FastifyReply){
-    const {id} = req.query as {id: string}
-    const targetBarberId = id || req.user.id;
+     const {barberId} = req.query as {barberId: string}
+    const targetBarberId = barberId || req.user.barberId;
 
-    if(targetBarberId !== req.user.id && req.user.role !== "SUPER_ADMIN"){
-        return res.status(403).send("Usuario não tem permissão para deletar outro barbeiro")
+    if(targetBarberId !== req.user.barberId && (req.user.role !== "SUPER_ADMIN" && req.user.role !== "ADMIN")){
+        return res.status(403).send("Usuario não tem permissão para atualizar outro barbeiro")
     }
     const barberDeleted = await BarberService.barberDelete(targetBarberId)
     res.status(200).send({status: "Barbeiro deletado com sucesso", data: barberDeleted})

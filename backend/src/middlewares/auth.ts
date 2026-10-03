@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import type {FastifyRequest, FastifyReply} from 'fastify';
 import { env } from '../env';
 import prisma from '../database/prisma';
+import type { UserRoles } from './authorize';
 
 export async function authMiddleware(req: FastifyRequest, res: FastifyReply) {
 
@@ -39,7 +40,7 @@ export async function authMiddleware(req: FastifyRequest, res: FastifyReply) {
             }
         });
 
-        if (!userAtivated || userAtivated.status !== "ATIVATED") {
+        if (!userAtivated || userAtivated.status !== "ACTIVE") {
             res.status(403).send({error: "Usuário não ativado"});
             return;
         }
@@ -47,7 +48,7 @@ export async function authMiddleware(req: FastifyRequest, res: FastifyReply) {
         req.user = {
             id: decoded.id,
             email: decoded.email,
-            role: userAtivated.role as UserRole
+            role: userAtivated.role as UserRoles
         }
 
         console.log(`usuario autenticado ${req.user.email}`)

@@ -31,6 +31,7 @@ enum UserStatus {
 
 enum AppointmentStatus {
   SCHEDULED
+  PENDENT
   CONFIRMED
   IN_PROGRESS
   COMPLETED

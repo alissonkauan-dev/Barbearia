@@ -1,5 +1,6 @@
 import prisma from "../../database/prisma";
 import * as Schema from "./appointmenSchema"
+import { businessHourList, getBarbershopLocalDateTime } from "../bussinessHour/hourService"
 
 interface PaginationParams {
     page?: number;
@@ -21,8 +22,36 @@ export async function appointmentCreate(userId: string, barberShopId: string, bo
         where: { id: barberShopId }
     });
 
-    if (!findBarberShop) throw new Error("Barbearia não encontrada");
-    
+    if (!findBarberShop) throw new Error("não foi possivel encontrar a barbearia")
+
+
+    const startLocalDateTime = await getBarbershopLocalDateTime(data.startTime, findBarberShop.timezone)
+    const endLocalDateTime = await getBarbershopLocalDateTime(data.endTime, findBarberShop.timezone)
+
+    const businessHour = await prisma.businessHour.findUnique({
+        where: {
+            barbershopId_dayOfWeek: {
+                barbershopId: barberShopId,
+                dayOfWeek: startLocalDateTime.dayOfWeek
+            }
+        }
+    })
+
+    if (!businessHour || !businessHour.isOpen) {
+        throw new Error(`A barbearia está fechada no dia ${startLocalDateTime.dayOfWeek}`);
+    }
+
+    if (businessHour.openTime && businessHour.closeTime) {
+        if (
+            startLocalDateTime.timeString < businessHour.openTime ||
+            endLocalDateTime.timeString > businessHour.closeTime
+        ) {
+            throw new Error(
+                `O horário escolhido (${startLocalDateTime.timeString} - ${endLocalDateTime.timeString}) está fora do expediente (${businessHour.openTime} - ${businessHour.closeTime})`
+            );
+        }
+    }
+
     const findBarber = await prisma.$transaction(async (tx) => {
         const userName = await tx.user.findFirst({
             where: {
@@ -49,7 +78,7 @@ export async function appointmentCreate(userId: string, barberShopId: string, bo
     const userExistent = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!userExistent) throw new Error("Utilizador não encontrado");
-    
+
     const appointmentDateExistent = await prisma.appointment.findFirst({
         where: {
             barberId: findBarber.id,
@@ -64,7 +93,7 @@ export async function appointmentCreate(userId: string, barberShopId: string, bo
     });
 
     if (appointmentDateExistent) {
-        throw new Error("Horário indisponível para o barbeiro selecionado (já existe um agendamento neste período)");
+        throw new Error("Horário indisponível para o barbeiro selecionado já existe um agendamento neste período");
     }
 
     try {
@@ -83,9 +112,9 @@ export async function appointmentCreate(userId: string, barberShopId: string, bo
             }
         });
 
-        return createdAppointment; 
+        return createdAppointment;
     }
-    catch(error) {
+    catch (error) {
         console.error("Erro ao criar o agendamento: ", error);
         throw new Error("Não foi possível criar o agendamento");
     }
@@ -97,7 +126,7 @@ export async function appointmentCancel(appointId: string, body: Schema.Appointm
 
     if (!findAppointment) throw new Error('Não foi possível encontrar o agendamento marcado');
     if (data.status !== 'CANCELLED') throw new Error('Erro no cancelamento do agendamento');
-    
+
     if (data.CancellationReason !== "BARBERSHOP_REQUEST" && data.CancellationReason !== "OTHER") {
         data.CancellationReason = "CLIENT_REQUEST";
     }
@@ -111,8 +140,8 @@ export async function appointmentCancel(appointId: string, body: Schema.Appointm
             }
         });
         return appointmentCancelled;
-    }   
-    catch(error) {
+    }
+    catch (error) {
         console.error('Erro no cancelamento do agendamento: ', error);
         throw new Error('Não foi possível cancelar o agendamento');
     }
@@ -137,7 +166,7 @@ export async function appointmentList({ page = 1, limit = 10 }: PaginationParams
 
         return appointments;
     }
-    catch(error) {
+    catch (error) {
         console.error('Erro na listagem dos agendamentos. Error: ', error);
         throw new Error("Não foi possível listar os agendamentos da barbearia");
     }
@@ -146,10 +175,18 @@ export async function appointmentList({ page = 1, limit = 10 }: PaginationParams
 export async function appointmentUpdate(appointId: string, body: Schema.AppointmentUpdateType) {
     const data = Schema.appointmentUpdateSchema.parse(body);
     const appointmentExist = await prisma.appointment.findFirst({
-        where: { id: appointId }
+        where: { id: appointId },
+        include: {
+            barbershop: {
+                select: {
+                    timezone: true
+                }
+            }
+        }
+
     });
 
-    if (!appointmentExist) throw new Error("Não foi possível localizar o agendamento");   
+    if (!appointmentExist) throw new Error("Não foi possível localizar o agendamento");
 
     try {
         const dataUpdate: any = {};
@@ -167,7 +204,7 @@ export async function appointmentUpdate(appointId: string, body: Schema.Appointm
                 });
                 return barberIdFind;
             });
-            
+
             if (barberExist) {
                 dataUpdate.barberId = barberExist.id;
             }
@@ -178,16 +215,46 @@ export async function appointmentUpdate(appointId: string, body: Schema.Appointm
         if (data.endTime !== undefined) dataUpdate.endAt = data.endTime;
         if (data.notes !== undefined) dataUpdate.clientNotes = data.notes;
 
+        if (dataUpdate.startAt && dataUpdate.endAt) {
+            const startLocalDateTime = await getBarbershopLocalDateTime(dataUpdate.startAt, appointmentExist.barbershop.timezone)
+            const endLocalDateTime = await getBarbershopLocalDateTime(dataUpdate.endAt, appointmentExist.barbershop.timezone)
+
+
+            const businessHour = await prisma.businessHour.findUnique({
+                where: {
+                    barbershopId_dayOfWeek: {
+                        barbershopId: appointmentExist.barbershopId,
+                        dayOfWeek: startLocalDateTime.dayOfWeek
+                    }
+                }
+            })
+
+            if (!businessHour || !businessHour.isOpen) {
+                throw new Error(`A barbearia está fechada no dia ${startLocalDateTime.dayOfWeek}`);
+            }
+
+            if (businessHour.openTime && businessHour.closeTime) {
+                if (
+                    startLocalDateTime.timeString < businessHour.openTime ||
+                    endLocalDateTime.timeString > businessHour.closeTime
+                ) {
+                    throw new Error(
+                        `O horário escolhido (${startLocalDateTime.timeString} - ${endLocalDateTime.timeString}) está fora do expediente (${businessHour.openTime} - ${businessHour.closeTime})`
+                    );
+                }
+            }
+        }
+
         dataUpdate.status = "PENDENT";
-        
+
         const appointmentUpdateResult = await prisma.appointment.update({
             where: { id: appointmentExist.id },
             data: dataUpdate
         });
-    
+
         return appointmentUpdateResult;
     }
-    catch(error) {
+    catch (error) {
         console.error("Erro na atualização do agendamento. ERROR: ", error);
         throw new Error("Não foi possível atualizar o agendamento");
     }
@@ -199,7 +266,7 @@ export async function appointmentAprove(appointId: string, body: Schema.Appointm
         where: { id: appointId }
     });
 
-    if (!appointmentExist) throw new Error("Não foi possível localizar o agendamento");   
+    if (!appointmentExist) throw new Error("Não foi possível localizar o agendamento");
 
     try {
         const dataUpdate: any = {};
@@ -214,7 +281,7 @@ export async function appointmentAprove(appointId: string, body: Schema.Appointm
         });
         return appointmentUpdateResult;
     }
-    catch(error) {
+    catch (error) {
         console.error("Erro na validação das alterações do agendamento. ERROR: ", error);
         throw new Error("Não foi possível validar as alterações feitas no agendamento");
     }

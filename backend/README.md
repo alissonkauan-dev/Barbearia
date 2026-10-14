@@ -80,6 +80,8 @@ A API expõe a documentação Swagger em:
 http://0.0.0.0:3111/docs
 ```
 
+A rota da documentação está protegida por autenticação JWT. É necessário enviar um token válido no header `Authorization: Bearer <token>`.
+
 Você pode usar a interface para testar endpoints e visualizar a OpenAPI gerada automaticamente.
 
 ## Base da API

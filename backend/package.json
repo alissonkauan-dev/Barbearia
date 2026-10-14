@@ -33,7 +33,16 @@
     "test:watch": "vitest",
     "test:ci": "vitest run --reporter=default --passWithNoTests",
     "coverage": "vitest run --coverage",
-    "dev": "tsx watch src/serve.ts"
+    "dev": "tsx watch src/serve.ts",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down -v",
+    "docker:logs": "docker compose logs -f api",
+    "db:push": "prisma db push",
+    "db:seed": "prisma db seed",
+    "seed": "tsx prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "keywords": [],
   "type": "module"

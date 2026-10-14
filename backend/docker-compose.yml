@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: barbearia-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: barbearia
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d barbearia"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: barbearia-api
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    environment:
+      NODE_ENV: DEVELOPMENT
+      PORT: 3111
+      HOST: localhost
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/barbearia?schema=public
+      JWT_SECRET: dev-secret-123
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_SECRET: dev-refresh-secret-123
+      JWT_REFRESH_EXPIRES_IN: 1h
+      COOKIES_SECRET: dev-cookie-secret
+    ports:
+      - "3111:3111"
+    command: sh -c "npx prisma db push && npm run dev"
+
+volumes:
+  postgres_data:

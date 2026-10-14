@@ -3,6 +3,7 @@ import fastifyCookie from "@fastify/cookie";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import { env } from "./env";
+import { authMiddleware } from "./middlewares/auth";
 import { userRoutes } from "./modules/User/usuarioRoutes";
 import { servicesRoutes } from "./modules/services/servicesRoutes";
 import { barberRoutes } from "./modules/barber/barberRoutes";
@@ -49,6 +50,20 @@ app.register(swaggerUi, {
   },
 });
 
+app.addHook("onRequest", async (request, reply) => {
+  const url = request.raw.url ?? "";
+
+  if (!url.startsWith("/docs")) {
+    return;
+  }
+
+  await authMiddleware(request as any, reply as any);
+
+  if (reply.sent) {
+    return;
+  }
+});
+
 const API = "/api/v1";
 
 app.get("/health", async () => ({
@@ -56,6 +71,7 @@ app.get("/health", async () => ({
   message: "server up",
   timestamp: new Date().toISOString(),
 }));
+
 
 app.register(userRoutes, {
   prefix: `${API}/usuario`,

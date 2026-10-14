@@ -1,18 +1,21 @@
-import {env} from "./env";
+import { pathToFileURL } from "node:url";
+import { env } from "./env";
 import app from "./app";
 
-const start = async () => {
+export async function startServer() {
+  try {
+    await app.listen({
+      host: env.HOST,
+      port: env.PORT,
+    });
 
-    try {
-        await app.listen({port: env.PORT, host: env.HOST})
-        .then(() => console.log(`Server is running on http://${env.HOST}:${env.PORT}`));
-    }
-
-    catch (err) {
-
-        console.error(err);
-
-    }
+    console.log(`Server is running on http://${env.HOST}:${env.PORT}`);
+  } catch (error) {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  }
 }
 
-start();
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  startServer();
+}

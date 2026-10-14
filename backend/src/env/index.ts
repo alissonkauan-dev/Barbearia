@@ -4,9 +4,16 @@ import { z } from "zod";
 dotenv.config();
 
 const envConfig = z.object({
-  NODE_ENV: z
-    .enum(["DEVELOPMENT", "PRODUCTION"])
-    .default("DEVELOPMENT"),
+  NODE_ENV: z.preprocess(
+    (value) => {
+      if (typeof value === "string") {
+        return value.toUpperCase();
+      }
+
+      return value;
+    },
+    z.enum(["DEVELOPMENT", "PRODUCTION", "TEST"]).default("DEVELOPMENT")
+  ),
 
   PORT: z.coerce.number(),
 

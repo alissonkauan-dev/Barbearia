@@ -1,5 +1,12 @@
 import { z } from "zod"
 
+const booleanString = z.union([
+    z.boolean(),
+    z.string().trim().toLowerCase().refine((value) => ["true", "false", "1", "0", "yes", "no", "on", "off"].includes(value), {
+        message: "Valor booleano inválido",
+    }).transform((value) => ["true", "1", "yes", "on"].includes(value))
+])
+
 export const barberCreateSchema = z.object({
     name: z.string().min(3, "O nome deve ter pelo menos 3 caracteres"),
     email: z.email("E-mail inválido"),
@@ -27,7 +34,7 @@ export const barberListQuerySchema = z.object({
 
     limit: z.coerce.number().int().min(1).max(100).default(10),
 
-    isActive: z.coerce.boolean().optional(),
+    isActive: booleanString.optional(),
 
 });
 

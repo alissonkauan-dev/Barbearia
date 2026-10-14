@@ -1,6 +1,12 @@
 
 import {z} from 'zod'
 
+const booleanString = z.union([
+    z.boolean(),
+    z.string().trim().toLowerCase().refine((value) => ["true", "false", "1", "0", "yes", "no", "on", "off"].includes(value), {
+        message: "Valor booleano inválido",
+    }).transform((value) => ["true", "1", "yes", "on"].includes(value))
+])
 
 export const blockSchema = z.object({
     title: z.string().min(6,"minimo seis caracteres"),
@@ -12,7 +18,7 @@ export const blockSchema = z.object({
 
 export const blockDesativeSchema = z.object({
     blockId: z.string(),
-    isActive: z.coerce.boolean()
+    isActive: booleanString
 })
 
 export const blockQuerySchema = z.object({

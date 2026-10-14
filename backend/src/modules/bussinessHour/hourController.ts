@@ -10,7 +10,7 @@ export async function listBusinessHours(req: FastifyRequest, res: FastifyReply) 
 
 export async function upsertBusinessHour(req: FastifyRequest, res: FastifyReply) {
     const { barbershopId } = req.params as { barbershopId: string };
-    const body = Schema.businessHourUpsertSchema.parse(req.body)
+    const body = Schema.businessHourUpsertSchema.parse(req.body); // Validado pelo schema no service ou aqui
     const updatedHour = await Service.businessHourUpsert(barbershopId, body);
     return res.status(200).send({ status: "Horário de funcionamento atualizado com sucesso", data: updatedHour });
 }

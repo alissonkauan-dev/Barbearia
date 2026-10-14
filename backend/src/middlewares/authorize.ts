@@ -6,7 +6,7 @@ export enum UserRoles {
   SUPER_ADMIN = "SUPER_ADMIN",
   ADMIN = "ADMIN",
   CLIENTE = "CLIENTE",
-  BARBEIRO = "BARBER",
+  BARBER = "BARBER",
 }
 
 export function authorizeMiddleware (allowedRoles: UserRoles[]) {

@@ -14,17 +14,19 @@ export async function appointmentCreate(userId: string, barberShopId: string, bo
 
     const now = new Date();
 
+    // validações superficial do horario
     if (data.startTime >= data.endTime) throw new Error("O horário de início deve ser menor que o horário de término");
     if (data.startTime < now) throw new Error("O horário de início deve ser maior que o horário atual");
     if (data.endTime < now) throw new Error("O horário de término deve ser maior que o horário atual");
 
+    // procurando a barbearia
     const findBarberShop = await prisma.barbershop.findUnique({
         where: { id: barberShopId }
     });
 
     if (!findBarberShop) throw new Error("não foi possivel encontrar a barbearia")
 
-
+    // logica de validação se o horario desejado a barbearia está aberta
     const startLocalDateTime = await getBarbershopLocalDateTime(data.startTime, findBarberShop.timezone)
     const endLocalDateTime = await getBarbershopLocalDateTime(data.endTime, findBarberShop.timezone)
 
@@ -52,6 +54,8 @@ export async function appointmentCreate(userId: string, barberShopId: string, bo
         }
     }
 
+
+    // logica barbeiro
     const findBarber = await prisma.$transaction(async (tx) => {
         const userName = await tx.user.findFirst({
             where: {
@@ -66,6 +70,16 @@ export async function appointmentCreate(userId: string, barberShopId: string, bo
     });
 
     if (!findBarber) throw new Error("Barbeiro não encontrado");
+
+    const findBlock = await prisma.barberBlock.findFirst({
+        where: { 
+            barberId: findBarber.id,
+            AND: [{startAt: { lt: data.endTime }, endAt: { gt: data.startTime }}]
+        }
+    })
+
+    if(findBlock) throw new Error("Barbeiro não estará disponivel no horario selecionado")
+
 
     const findService = await prisma.service.findFirst({
         where: {
@@ -209,6 +223,7 @@ export async function appointmentUpdate(appointId: string, body: Schema.Appointm
                 dataUpdate.barberId = barberExist.id;
             }
         }
+        const targetBarberId = dataUpdate.barberId !== undefined ? dataUpdate.barberId : appointmentExist.barberId;
 
         if (data.serviceName !== undefined) dataUpdate.serviceName = data.serviceName;
         if (data.startTime !== undefined) dataUpdate.startAt = data.startTime;
@@ -229,21 +244,29 @@ export async function appointmentUpdate(appointId: string, body: Schema.Appointm
                 }
             })
 
-            if (!businessHour || !businessHour.isOpen) {
-                throw new Error(`A barbearia está fechada no dia ${startLocalDateTime.dayOfWeek}`);
-            }
+            if (!businessHour || !businessHour.isOpen) throw new Error(`A barbearia está fechada no dia ${startLocalDateTime.dayOfWeek}`);
 
             if (businessHour.openTime && businessHour.closeTime) {
-                if (
-                    startLocalDateTime.timeString < businessHour.openTime ||
-                    endLocalDateTime.timeString > businessHour.closeTime
-                ) {
+                if (startLocalDateTime.timeString < businessHour.openTime || endLocalDateTime.timeString > businessHour.closeTime) {
                     throw new Error(
                         `O horário escolhido (${startLocalDateTime.timeString} - ${endLocalDateTime.timeString}) está fora do expediente (${businessHour.openTime} - ${businessHour.closeTime})`
                     );
                 }
             }
+           
+
+            const findBlock = await prisma.barberBlock.findFirst({
+            where: {
+                barberId: targetBarberId,
+                AND: [{startAt: {lt: dataUpdate.endAt}, endAt: {gt: dataUpdate.startAt}}]
+            }
+        })
+
+        if(findBlock) throw new Error("o barbeiro não está disponivel no horario selecionado")
+
         }
+
+        
 
         dataUpdate.status = "PENDENT";
 
